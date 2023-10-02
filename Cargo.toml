@@ -1,0 +1,7 @@
+[package]
+name = "ltsh"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+laddertypes = { git = "https://github.com/michaelsippel/lib-laddertypes.git" }
