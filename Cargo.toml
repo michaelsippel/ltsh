@@ -5,3 +5,4 @@ edition = "2018"
 
 [dependencies]
 laddertypes = { git = "https://github.com/michaelsippel/lib-laddertypes.git" }
+tiny-ansi = "0.1.0"

@@ -1,6 +1,7 @@
 use {
     laddertypes::*,
-    std::io::BufRead
+    std::io::BufRead,
+    tiny_ansi::TinyAnsi
 };
 
 //<<<<>>>><<>><><<>><<<*>>><<>><><<>><<<<>>>>\\
@@ -26,17 +27,17 @@ pub fn get_type_str(cmd: &str, item: &str) -> Option<String> {
 //<<<<>>>><<>><><<>><<<*>>><<>><><<>><<<<>>>>\\
 
 fn main() {
+    let mut success = true;
     let mut dict = TypeDict::new();
 
     let stdin = std::io::stdin();
     for pipeline in std::io::BufReader::new(stdin).lines() {        
         let mut last_cmd = String::new();
-        let mut last_stdout_type_str : Option<String> = None;
         let mut last_stdout_type : Option<TypeTerm> = None;
 
         let pipeline_str = pipeline.expect("");
 
-        eprintln!("--- BEGIN TYPE-ANALYSIS ---\n");
+        eprintln!("{}", "--- BEGIN TYPE-ANALYSIS ---\n".blue());
         for cmd in pipeline_str.split("|") {
 
             let cmd = cmd.trim()
@@ -49,36 +50,113 @@ fn main() {
                 let it = dict.parse(&intype_str).expect("parse error");
 
                 if let Some(last) = last_stdout_type {
-                    if last.is_syntactic_subtype_of( &it ).is_ok() {
-                        eprintln!("* typecheck OK!");
-                        eprintln!("    ——————————\n  .... `{}` outputs\n{}    ——————————\n  .... `{}` expects\n{}    ——————————\n",
-                                  last_cmd, last_stdout_type_str.unwrap(), cmd, intype_str);
-                    } else {
-                        eprintln!("* !====> TYPE MISMATCH !! <====!");
-                        eprintln!("    ——————————\n  ....`{}` outputs\n{}    ———————————\n  .... `{}` expects\n{}    ——————————\n",
-                                  last_cmd, last_stdout_type_str.unwrap(), cmd, intype_str);
+                    match last.is_syntactic_subtype_of( &it ) {
+                        Ok(first_match) => {
+                            eprintln!("{} typecheck {}", "*".bright_blue().bold(), "ok".bold().green());
+
+                            let rl = last.get_lnf_vec().iter().map(|t| dict.unparse(t)).collect::<Vec<_>>();
+                            let rr = it.get_lnf_vec().iter().map(|t| dict.unparse(t)).collect::<Vec<_>>();
+
+                            let c1_width = usize::max(rl.iter().map(|s| s.chars().count()).max().unwrap_or(0), last_cmd.chars().count());
+                            for _ in last_cmd.chars().count() .. c1_width { eprint!(" "); }
+                            eprintln!("{}{}{}", last_cmd.on_black().bright_blue(), " | ".on_black().yellow().bold(), cmd.on_black().bright_blue());
+
+                            for i in 0 .. rl.len() {
+                                if i < first_match {
+                                    eprint!("{}", rl[i].bright_black());
+
+                                    for _ in rl[i].chars().count() .. c1_width { eprint!(" "); }
+                                    eprintln!(" {}", "|".bright_black());
+                                } else {
+                                    eprint!("{}", rl[i].green());
+
+                                    if i-first_match < rr.len() {
+                                        for _ in rl[i].chars().count() .. c1_width { eprint!(" "); }
+                                        eprintln!(" | {}", rr[i-first_match].green());
+                                    } else {
+                                        eprintln!("");
+                                    }
+                                }
+                            }
+                            eprintln!("");
+                        }
+                        Err((first_match, first_mismatch)) => {
+                            success = false;
+
+                            eprintln!("{} typecheck {}", "*".bright_blue().bold(), "error".bold().red());
+
+                            let rl = last.get_lnf_vec().iter().map(|t| dict.unparse(t)).collect::<Vec<_>>();
+                            let rr = it.get_lnf_vec().iter().map(|t| dict.unparse(t)).collect::<Vec<_>>();
+
+                            let c1_width = usize::max(rl.iter().map(|s| s.chars().count()).max().unwrap_or(0), last_cmd.chars().count());
+                            for _ in last_cmd.chars().count() .. c1_width { eprint!(" "); }
+                            eprintln!("{}{}{}", last_cmd.on_black().bright_blue(), " | ".on_black().yellow().bold(), cmd.on_black().bright_blue());
+
+                            for i in 0 .. rl.len() {
+                                if i < first_match {
+                                    eprint!("{}", &rl[i].bright_black());
+
+                                    for _ in rl[i].chars().count() .. c1_width { eprint!(" "); }
+                                    eprintln!(" {}", "|".bright_black());
+                                } else {
+                                    if i < first_mismatch {
+                                        eprint!("{}", rl[i].green());
+
+                                        if i - first_match < rr.len() {
+                                            for _ in rl[i].chars().count() .. c1_width { eprint!(" "); }
+                                            eprintln!(" | {}", rr[i-first_match].green());
+                                        } else {
+                                            eprintln!("");
+                                        }
+                                    } else if i > first_mismatch {
+                                        eprint!("{}", rl[i].bright_black());
+
+                                        if i - first_match < rr.len() {
+                                            for _ in rl[i].chars().count() .. c1_width { eprint!(" "); }
+                                            eprintln!(" | {}", rr[i-first_match].bright_black());
+                                        } else {
+                                            eprintln!("");
+                                        }
+                                    } else {
+                                        eprint!("{}", rl[i].red());
+
+                                        if i - first_match < rr.len() {
+                                            for _ in rl[i].chars().count() .. c1_width { eprint!(" "); }
+                                            eprintln!(" | {}", rr[i-first_match].red());
+                                        } else {
+                                            eprintln!("");
+                                        }
+                                    }
+                                }
+                            }
+                            eprintln!("");
+                        }
                     }
                 }
             } else {
-                eprintln!("* unknown stdin-type for `{}`\n", cmd);
+                eprintln!("{} {} stdin-type of `{}`\n", "*".bold().bright_blue(), "unknown".yellow(), cmd.on_black().bright_blue());
             }
 
             if let Some(outtype_str) = get_type_str(&cmd, "<1") {
                 let it = dict.parse(&outtype_str).expect("parse error");
-
-                last_stdout_type_str = Some(outtype_str);
                 last_stdout_type = Some(it);
             } else {
-                eprintln!("* unknown stdout-type for `{}`\n", cmd);
-                last_stdout_type_str = None;
+                eprintln!("{} {} stdout-type of `{}`\n", "*".bold().bright_blue(), "unknown".yellow(), cmd.on_black().bright_blue());
                 last_stdout_type = None;
             }
 
             last_cmd = cmd;
         }
+        eprintln!("{}", "--- END TYPE-ANALYSIS ---".blue());
     }
 
-    eprintln!("--- END TYPE-ANALYSIS ---\n");
+    std::process::exit(
+        if success {
+            0
+        } else {
+            1
+        }
+    );
 }
 
 //<<<<>>>><<>><><<>><<<*>>><<>><><<>><<<<>>>>\\

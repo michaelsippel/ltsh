@@ -1,46 +1,69 @@
 # ltsh
-small utility to perform a type-check on shell-pipelines
+
+**(highly experimental)**
+
+tiny utility program for type-analysis of shell pipelines based on ladder-typing
+
 <hr/>
 
 ### Example
 
 ```sh
-[~]$ ltsh <<< 'echo -n $PATH | xargs stat -c %x | sort -n'
+[~]$ ltsh <<< 'echo -n $PATH | xargs stat -c %Y | sort -n'
 ```
 ```
 --- BEGIN TYPE-ANALYSIS ---
 
-* unknown stdin-type for `echo -n $PATH`
+* unknown stdin-type of `echo -n $PATH`
 
-* !====> TYPE MISMATCH !! <====!
-    ——————————
-  ....`echo -n $PATH` outputs
-<Seq Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<SepSeq Char ':'>~<Seq Char>
-    ———————————
-  .... `xargs stat -c %x` expects
-<Seq Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
-    ——————————
+* typecheck error
+          echo -n $PATH | xargs stat -c %Y
+<Seq Path>              | <Seq Path>
+<Seq <Seq PathSegment>> | <Seq <Seq PathSegment>>
+<Seq <Seq <Seq Char>>>  | <Seq <Seq <Seq Char>>>
+<Seq <SepSeq Char '/'>> | <Seq <SepSeq Char '/'>>
+<Seq <Seq Char>>        | <Seq <Seq Char>>
+<SepSeq Char ':'>       | <SepSeq Char '\n'>
+<Seq Char>              | <Seq Char>
 
-* !====> TYPE MISMATCH !! <====!
-    ——————————
-  ....`xargs stat -c %x` outputs
-<Seq Date~ISO-8601~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
-    ———————————
-  .... `sort -n` expects
-<Seq ℕ>~<Seq <PosInt 10 BigEndian>~<Seq <Digit 10>~Char>>~<SepSeq Char '\n'>~<Seq Char>
-    ——————————
+* typecheck ok
+           xargs stat -c %Y | sort -n
+<Seq Date>                  |
+<Seq <TimeSince UnixEpoch>> |
+<Seq <Duration Seconds>>    |
+<Seq ℕ>                     | <Seq ℕ>
+<Seq <PosInt 10 BigEndian>> | <Seq <PosInt 10 BigEndian>>
+<Seq <Seq <Digit 10>>>      | <Seq <Seq <Digit 10>>>
+<Seq <Seq Char>>            | <Seq <Seq Char>>
+<SepSeq Char '\n'>          | <SepSeq Char '\n'>
+<Seq Char>                  | <Seq Char>
 
 --- END TYPE-ANALYSIS ---
 ```
 
 
-### Use as Zsh-extension
+### Install
+
+```sh
+git clone https://github.com/michaelsippel/ltsh
+cd ltsh
+cargo install --path .
+```
+
+### Use as Zsh-Extension
 To automatically check every pipeline entered during interactive shell
 use, add the following hook to your `.zshrc`:
 
 ```sh
 preexec() {
-    ltsh <<< "$1"
+    if ! ltsh <<< "${1}";
+    then
+        echo "\e[33;1m"
+        echo "!! ltsh discoverd a type incompatibility.      !!"
+        echo "!! abort [CTRL-C] or continue regardless [RET] !!"
+        echo "\e[0m"
+        read -s keys
+    fi
 }
 ```
 
@@ -51,5 +74,5 @@ preexec() {
 * regex-based typedb implementation (slow & incapable)
 
 
-### License
+## License
 [GPLv3](COPYING)
