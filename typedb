@@ -24,28 +24,8 @@
 ::seq \(-s\|--separator\) : [0-9]*
 <1: <Seq ℕ>~<Seq <PosInt 10 BigEndian>~<Seq <Digit 10>~Char>~<SepSeq Char ':'>~<Seq Char>
 
-::sort -n\( .*\)*
->0: <Seq ℕ>~<Seq <PosInt 10 BigEndian>~<Seq <Digit 10>~Char>>~<SepSeq Char '\n'>~<Seq Char>
-<1: <Seq ℕ>~<Seq <PosInt 10 BigEndian>~<Seq <Digit 10>~Char>>~<SepSeq Char '\n'>~<Seq Char>
-
-::sort -M\( .*\)*
->0: <Seq Month~LocaleShortMonth~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
-<1: <Seq Month~LocaleShortMonth~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
-
-::sort\( .*\)*
->0: <Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
-<1: <Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
-
 ::\(head\|tail\)\(\| .*\)
 >0: <Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
-<1: <Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
-
-::cut -d[ ]*: -f[0-9]*
->0: <Seq <Seq <Seq Char>>~<SepSeq Char ':'>~<Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
-<1: <Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
-
-::cut -d[ ]*/ -f[0-9]*
->0: <Seq <Seq <Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
 <1: <Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
 
 ::ls\( .*\)* -l\( .*\)
@@ -116,9 +96,45 @@
 >0: <Seq Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<SepSeq Char ':'>~<Seq Char>
 <1: <Seq Date~<TimeSince UnixEpoch>~<Duration Seconds>~ℕ~<PosInt 10 BigEndian>~<Seq <Digit 10>~Char>>~<SepSeq Char '\n'>~<Seq Char>
 
+::xargs -d[ ]*: stat -c %[WXYZ],%n
+>0: <Seq Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<SepSeq Char ':'>~<Seq Char>
+<1: <Seq <Tuple Date~<TimeSince UnixEpoch>~<Duration Seconds>~ℕ~<PosInt 10 BigEndian>~<Seq <Digit 10>~Char> ',' Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+
 ::xargs -d[ ]*: stat -c %[wxyz]
 >0: <Seq Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<SepSeq Char ':'>~<Seq Char>
 <1: <Seq Date~ISO-8601~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+
+::sort -t, -k1 -n
+>0: <Seq <Tuple Date~<TimeSince UnixEpoch>~<Duration Seconds>~ℕ~<PosInt 10 BigEndian>~<Seq <Digit 10>~Char> ',' Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+<1: <Seq <Tuple Date~<TimeSince UnixEpoch>~<Duration Seconds>~ℕ~<PosInt 10 BigEndian>~<Seq <Digit 10>~Char> ',' Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+
+::cut -d[ ]*, -f[ ]*1
+>0: <Seq <Tuple Date~<TimeSince UnixEpoch>~<Duration Seconds>~ℕ~<PosInt 10 BigEndian>~<Seq <Digit 10>~Char> ',' Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+<1: <Seq Date~<TimeSince UnixEpoch>~<Duration Seconds>~ℕ~<PosInt 10 BigEndian>~<Seq <Digit 10>~Char>>~<SepSeq Char '\n'>~<Seq Char>
+
+::cut -d[ ]*, -f[ ]*2
+>0: <Seq <Tuple Date~<TimeSince UnixEpoch>~<Duration Seconds>~ℕ~<PosInt 10 BigEndian>~<Seq <Digit 10>~Char> ',' Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+<1: <Seq Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+
+::cut -d[ ]*: -f[0-9]*
+>0: <Seq <Seq <Seq Char>>~<SepSeq Char ':'>~<Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+<1: <Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+
+::cut -d[ ]*/ -f[0-9]*
+>0: <Seq <Seq <Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+<1: <Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+
+::sort -n\( .*\)*
+>0: <Seq ℕ>~<Seq <PosInt 10 BigEndian>~<Seq <Digit 10>~Char>>~<SepSeq Char '\n'>~<Seq Char>
+<1: <Seq ℕ>~<Seq <PosInt 10 BigEndian>~<Seq <Digit 10>~Char>>~<SepSeq Char '\n'>~<Seq Char>
+
+::sort -M\( .*\)*
+>0: <Seq Month~LocaleShortMonth~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+<1: <Seq Month~LocaleShortMonth~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+
+::sort\( .*\)*
+>0: <Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
+<1: <Seq <Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
 
 ::xargs rm\( .*\)*
 >0: <Seq Path~<Seq PathSegment~<Seq Char>>~<SepSeq Char '/'>~<Seq Char>>~<SepSeq Char '\n'>~<Seq Char>
