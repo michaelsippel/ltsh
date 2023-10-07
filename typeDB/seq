@@ -1,0 +1,25 @@
+::seq [OPTION]... [FIRST [INCREMENT]] LAST {
+    >0 : None ;
+
+    match OPTION... {
+        --help { <1 : Help~<Seq Char> ; }
+	--version { <1 : VersionInfo~<Seq Char> ; }
+        * {
+            NUM = match OPTION... {
+                -f--format FORMAT { ℝ~<Float 10 FORMAT>~<Seq Char> }
+		* { ℤ~<PosInt 10 BigEndian>~<Seq <Digit 10>~Char> }
+	    };
+
+            SEP = match OPTION... {
+                -s--separator SEP { SEP }
+                * { '\n' }
+            };
+
+            $FIRST     : NUM ;
+            $INCREMENT : NUM ;
+            $LAST      : NUM ;
+
+	    <1 : <Seq NUM~<Seq Char>>~<SepSeq Char SEP>~<Seq Char> ;
+        }	
+    }
+}

@@ -1,0 +1,56 @@
+::dirname [OPTION] NAME... {
+
+    # dont expect any data on stdin
+    #
+
+    >0 : None ;
+
+
+    # each (non-option) argument must be a path
+    #
+
+    NAME : Path
+           ~<Seq PathSegment
+                 ~<Seq Char>>
+           ~<SepSeq Char '/'>
+           ~<Seq Char>
+	   ~UTF-8
+	   ~<Seq Byte> ;
+
+
+    matchopt OPTION {
+
+        # help and version flags will bypass any data processing
+	#
+
+        --help    { <1 : Help~<Seq Char> ; }
+	--version { <1 : VersionInfo~<Seq Char> ; }
+
+
+        # in case neither --help nor --version is set
+	# ...
+
+        * {
+
+	    # if zero-flag is set, use '\0' instead of '\n'
+	    # as delimiter in output sequence
+
+            DELIM =
+	        match OPTION {
+                    -z--zero { '\0' }
+                    * { '\n' }
+                };
+
+
+            # output a sequence of paths to stdout
+	    #
+
+            <1 : <Seq Path
+                      ~<Seq PathSegment~<Seq Char>>
+                      ~<SepSeq Char '/'>
+                      ~<Seq Char>>
+                 ~<SepSeq Char DELIM>
+		 ~<Seq Char> ;
+        }
+    }
+}

@@ -1,0 +1,65 @@
+::cut OPTION... [FILE]... {
+
+    match OPTION... {
+        --help { <1 : Help~<Seq Char> ; }
+	--version { <1 : VersionInfo~<Seq Char> ; }
+
+        * {
+	    match OPTION... {
+		-f--fields LIST:<Seq ℕ>~CutFieldList~<Seq Char> {
+
+                    ROW-DELIM =
+                        match OPTION... {
+                            -z--zero-terminated { '\0' }
+                            * { '\n' }
+			};
+
+                    IN-COL-DELIM =
+                        match OPTION... {
+                            -d--delimiter DELIM:Char { DELIM }
+                            * { '\t' }
+                        };
+
+                    OUT-COL-DELIM =
+                        match OPTION... {
+			    --output-delimiter STRING:<Seq Char> { STRING }
+			    * { IN-COL-DELIM }
+			};
+
+                    FILE : Path
+                           ~<Seq PathSegment
+                                 ~<Seq Char>>
+                           ~<SepSeq Char '/'>
+                           ~<Seq Char> ;
+
+                    @FILE : <Seq <* < ITEM~<Seq Char> >... >
+                                 ~<Seq <Seq Char>>
+                                 ~<SepSeq Char IN-COL-DELIM>
+                                 ~<Seq Char>>
+                            ~<SepSeq Char ROW-DELIM>
+                            ~<Seq Char> ;
+
+                    >0 : <Seq <* <ITEM~<Seq Char>>... >
+                              ~<Seq <Seq Char>>
+                              ~<SepSeq Char IN-COL-DELIM>
+                              ~<Seq Char>>
+                         ~<SepSeq Char ROW-DELIM>
+                         ~<Seq Char> ;
+
+                    # `[LIST]` means `select all fields contained in LIST from parameter pack`
+                    <1 : <Seq <*  <ITEM~<Seq Char>>[LIST]... >
+                              ~<Seq <Seq Char>>
+                              ~<SepSeq Char OUT-COL-DELIM>
+                              ~<Seq Char>>
+                         ~<SepSeq Char ROW-DELIM>
+                         ~<Seq Char> ;
+                }
+
+                * {
+                    <1 : Nothing ;
+                    <2 : MissingFields~ErrorMessage~<Seq Char> ;
+                }
+            }
+        }
+    }
+}

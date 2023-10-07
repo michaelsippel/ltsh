@@ -1,0 +1,38 @@
+::xargs [OPTION]... [CMD [INITIAL-ARGS]...]  {
+
+    DELIM =
+        match OPTION... {
+            -0--null { '\0' }
+            -d--delimiter D:Char { D }
+        };
+
+    match OPTION... {
+        -a--argfile PATH => {
+            # type of data read from file at `path`
+
+            @PATH : ARGS~<Seq Char>...
+                    ~<Seq <Seq Char>>
+                    ~<SepSeq Char DELIM>
+                    ~<Seq Char> ;
+        }
+        * {
+            # type of data read from stdin
+
+            >0 : ARGS~<Seq Char>...
+                 ~<Seq <Seq Char>>
+                 ~<SepSeq Char DELIM>
+                 ~<Seq Char> ;
+        }
+    }
+
+    match OPTION... {
+        -I REPLACE-STR {
+	    # TODO : how to handle replacement ?
+	    <1 : cmdtype <1 { CMD { INITIAL-ARGS where REPLACE-STR -> ARGS... } } ;
+        }
+        * {
+            <1 : cmdtype <1 { CMD INITIAL-ARGS... ARGS... } ;
+        }
+    }
+
+}

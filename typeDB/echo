@@ -1,0 +1,16 @@
+::echo [OPTIONS]... [STRING]... {
+   >0 : None ;
+
+    matchopt OPTION {
+        --help    { <1 : Help~<Seq Char> ; }
+	--version { <1 : VersionInfo~<Seq Char> ; }
+	-n {
+            <1 : <* STRING~<Seq Char>... >
+                 ~<Seq Char> ;
+        }
+	* {
+            <1 : <* STRING~<Seq Char>... '\n' >
+                 ~<Seq Char> ;
+        }
+    }
+}

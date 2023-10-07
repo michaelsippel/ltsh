@@ -1,0 +1,15 @@
+::date [OPTION]... [+FORMAT] {
+    match FORMAT {
+        "+%s" {
+            <1 : TimePoint
+                 ~<TimeSince UnixEpoch>
+                 ~<Duration Seconds>
+                 ~ℕ
+                 ~<PosInt 10 BigEndian>
+                 ~<Seq <Digit 10>~Char>
+        }
+        * {
+            <1 : TimePoint ;
+        }
+    }
+}
