@@ -4,6 +4,11 @@ use {
     tiny_ansi::TinyAnsi
 };
 
+mod ast;
+mod env;
+mod parse;
+//mod expand;
+
 //<<<<>>>><<>><><<>><<<*>>><<>><><<>><<<<>>>>\\
 
 pub fn get_type_str(cmd: &str, item: &str) -> Option<String> {
@@ -31,7 +36,19 @@ fn main() {
     let mut dict = TypeDict::new();
 
     let stdin = std::io::stdin();
-    for pipeline in std::io::BufReader::new(stdin).lines() {        
+    for line in std::io::BufReader::new(stdin).lines() {
+        if let Ok(line) = line {
+            let mut lex = parse::WordLexer::from( line.chars() );
+            for word in lex {
+                eprintln!("word-segment: {:?}", word);
+            }
+        }
+    }
+
+    return;
+
+    let stdin = std::io::stdin();
+    for pipeline in std::io::BufReader::new(stdin).lines() {
         let mut last_cmd = String::new();
         let mut last_stdout_type : Option<TypeTerm> = None;
 
