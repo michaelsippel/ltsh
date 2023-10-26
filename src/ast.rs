@@ -1,30 +1,32 @@
+use std::boxed::Box;
+
 //<<<<>>>><<>><><<>><<<*>>><<>><><<>><<<<>>>>\\
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Command {
     Simple {
-        assignments: Vec<(String, Word)>,
+        assignments: Vec<Assignment>,
         command_word: Word,
         redirections: Vec<Redirection>
     },
     Pipeline(Vec<Command>),
     Sequence(Vec<Command>),
-    ShortCircuitConjection(Vec<Command>),
+    ShortCircuitConjunction(Vec<Command>),
     ShortCircuitDisjunction(Vec<Command>),
-    Negation(Command),
+    Negation(Box<Command>),
     While {
-        condition: Command,
-        loop_body: Command
+        condition: Box<Command>,
+        loop_body: Box<Command>
     },
     For {
         varname: String,
         sequence: Word,
-        loop_body: Command
-    }
+        loop_body: Box<Command>
+    },
     If {
-        condition: Command,
-        then_branch: Command,
-        else_branch: Command
+        condition: Box<Command>,
+        then_branch: Box<Command>,
+        else_branch: Box<Command>
     },
     Case {
         expr: Word,
@@ -32,35 +34,25 @@ pub enum Command {
     },
     Function {
         name: String,
-        body: Command
+        body: Box<Command>
     }
 }
 
-/*
- * We are all luminous beings.
- * Why then, do we not appear before each
- * other radiant in our illumination ?
- */
-
-/*
- * Bewteen the idea
- * And the reality
- * Between the motion
- * And the act
- * Falls the Shadow
- * (T.S. Eliot)
- */
-
 //<<<<>>>><<>><><<>><<<*>>><<>><><<>><<<<>>>>\\
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
+pub struct Assignment {
+    pub name: String,
+    pub value: Word
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Word {
     pub segments: Vec<WordSegment>
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum WordSegment {
-    FieldSeparator,
     Tilde(String),
     Literal(String),
     Parameter(String, ParameterFormat),
@@ -68,7 +60,7 @@ pub enum WordSegment {
     DoubleQuote(Word),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ParameterFormat {
     Normal,
     Length,
@@ -79,42 +71,42 @@ pub enum ParameterFormat {
     Sub(ParamSubSide, ParamSubMode, Word),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ParamSubMode {
     Shortest, Longest
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ParamSubSide {
     Prefix, Suffix
 }
 
 //<<<<>>>><<>><><<>><<<*>>><<>><><<>><<<<>>>>\\
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Redirection {
     redirection_type: RedirectionType,
     fd: u64,
     target: Word
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RedirectionType {
     File(FileRedirectionType),
     Dup(DupRedirectionType),
     Heredoc // '<<'
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum FileRedirectionType {
     In,         // '<'
     InOut,      // '<>'
     Out,        // '>'
     OutReplace, // '>|'
-    OutAppend,  // '>|'
+    OutAppend,  // '>>'
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum DupRedirectionType {
     In,  // '<&'
     Out  // '>&'

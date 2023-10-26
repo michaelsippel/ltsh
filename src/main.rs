@@ -1,3 +1,5 @@
+#![feature(iterator_try_collect)]
+
 use {
     laddertypes::*,
     std::io::BufRead,
@@ -38,10 +40,14 @@ fn main() {
     let stdin = std::io::stdin();
     for line in std::io::BufReader::new(stdin).lines() {
         if let Ok(line) = line {
+            let cmd = parse::parse_cmd( &mut line.chars().peekable() );
+            eprintln!("parsed cmd: {:?}", cmd);
+            /*
             let mut lex = parse::WordLexer::from( line.chars() );
             for word in lex {
                 eprintln!("word-segment: {:?}", word);
-            }
+        }
+            */
         }
     }
 
