@@ -47,6 +47,21 @@ where It: Iterator<Item = char> {
             (Some('\''), false)
         ])
     }
+
+    fn new_shell_word_or_assignment(chars: &'a mut Peekable<It>) -> Self {
+        DelimIter::new(chars, vec![
+            (None, true),
+            (Some(' '), true),
+            (Some('\t'), true),
+            (Some('\n'), true),
+            (Some('='), false),
+            (Some('|'), false),
+            (Some('&'), false),
+            (Some(';'), false),
+            (Some('\"'), false),
+            (Some('\''), false)
+        ])
+    }
 }
 
 impl<'a, It> Iterator for DelimIter<'a, It>
@@ -137,15 +152,6 @@ where It: Iterator<Item = char>
     })
 }
 
-pub fn parse_assignment<It>(chars: &mut Peekable<It>) -> Result<Assignment, LexError>
-where It: Iterator<Item = char>
-{
-    let name = DelimIter::new(chars, vec![(Some('='), true)]).try_collect::<String>()?;
-    let value_str = DelimIter::new_whitespace(chars).try_collect::<String>()?;
-    let value = parse_word(&mut value_str.chars().peekable())?;
-    Ok(Assignment{ name, value })
-}
-
 impl std::str::FromStr for FileRedirectionType {
     type Err = LexError;
 
@@ -178,21 +184,38 @@ where It: Iterator<Item = char>
         return Ok(None);
     }
 
-    let mut first = DelimIter::new_shell_word(chars).try_collect::<String>()?;
+    loop {
+        skip_whitespace(chars);
+        let mut name = DelimIter::new_shell_word_or_assignment(chars).try_collect::<String>()?;
 
-    while first.contains('=') {
-        assignments.push( parse_assignment(chars)? );
-        first = DelimIter::new_shell_word(chars).try_collect::<String>()?;
+        match chars.peek().clone() {
+            Some('=') => {
+                chars.next();
+                let mut lex = WordLexer{ chars };
+                match lex.next() {
+                    Some(Ok(value)) => {
+                        assignments.push(Assignment { name, value: Word{ segments: vec![ value ] } });
+                    },
+                    Some(Err(e)) => {
+                        return Err(e);
+                    },
+                    None => {
+                        return Err(LexError::UnexpectedEnd(vec![]));
+                    }
+                }
+            }
+            _ => {
+                let mut cmd_segments = WordLexer{ chars }.try_collect::<Vec<_>>()?;
+                cmd_segments.insert(0, WordSegment::Literal(name));
+
+                return Ok(Some(Command::Simple {
+                    assignments,
+                    command_word: Word { segments: cmd_segments },
+                    redirections,
+                }));
+            }
+        }
     }
-
-    let mut cmd_segments = WordLexer{ chars }.try_collect::<Vec<_>>()?;
-    cmd_segments.insert(0, WordSegment::Literal(first));
-
-    Ok(Some(Command::Simple {
-        assignments,
-        command_word: Word { segments: cmd_segments },
-        redirections,
-    }))
 }
 
 pub fn parse_cmd<It>(chars: &mut Peekable<It>) -> Result<Option<Command>, LexError>
@@ -404,8 +427,12 @@ mod test {
             assert_eq!(lexer.next(), Some(Ok(WordSegment::Literal(String::from("1234")))));
             assert_eq!(lexer.next(), None);
         }
-
         assert_eq!(cs.next(), Some('|'));
+        {
+            let mut lexer = WordLexer{ chars: &mut cs };
+            assert_eq!(lexer.next(), Some(Ok(WordSegment::Literal(String::from("test")))));
+            assert_eq!(lexer.next(), None);
+        }
     }
 }
 
