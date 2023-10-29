@@ -11,6 +11,8 @@ mod env;
 mod parse;
 //mod expand;
 
+mod cmd_type_dsl;
+
 //<<<<>>>><<>><><<>><<<*>>><<>><><<>><<<<>>>>\\
 
 pub fn get_type_str(cmd: &str, item: &str) -> Option<String> {
