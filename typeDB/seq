@@ -19,7 +19,7 @@
             $INCREMENT : NUM ;
             $LAST      : NUM ;
 
-	    <1 : <Seq NUM~<Seq Char>>~<SepSeq Char SEP>~<Seq Char> ;
+            <1 : <Seq NUM~<Seq Char>>~<SepSeq Char SEP>~<Seq Char> ;
         }	
     }
 }

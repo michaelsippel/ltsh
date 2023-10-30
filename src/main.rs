@@ -6,11 +6,7 @@ use {
     tiny_ansi::TinyAnsi
 };
 
-mod ast;
-mod env;
-mod parse;
-//mod expand;
-
+mod sh;
 mod cmd_type_dsl;
 
 //<<<<>>>><<>><><<>><<<*>>><<>><><<>><<<<>>>>\\
@@ -42,7 +38,7 @@ fn main() {
     let stdin = std::io::stdin();
     for line in std::io::BufReader::new(stdin).lines() {
         if let Ok(line) = line {
-            let cmd = parse::parse_cmd( &mut line.chars().peekable() );
+            let cmd = sh::parse::parse_cmd( &mut line.chars().peekable() );
             eprintln!("parsed cmd: {:?}", cmd);
             /*
             let mut lex = parse::WordLexer::from( line.chars() );

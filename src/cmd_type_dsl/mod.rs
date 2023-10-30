@@ -3,17 +3,12 @@ use std::{
     boxed::Box
 };
 
-use crate::ast::Command;
+use crate::sh::ast::Command;
 use laddertypes::*;
 
-
 pub struct Substitution(HashMap< String, CommandTypeExpr >);
-impl Substitution {
-   pub fn apply(&self, expr: &mut CommandTypeExpr) {
-        
-   }
-}
 
+#[derive(Clone)]
 pub enum CommandArgPattern {
     Literal(String),
     Variable(String),
@@ -23,10 +18,27 @@ pub enum CommandArgPattern {
     Disjunction(Vec<CommandArgPattern>)
 }
 
+#[derive(Clone)]
 pub struct CommandPattern {
     name: String,
     args: Vec<CommandArgPattern>,
     env: Vec<(String, CommandTypeExpr)>,
+}
+
+#[derive(Clone)]
+pub struct MatchCandidate {
+    at: usize,
+    expected: CommandPattern,
+    found: CommandTypeExpr,
+}
+
+#[derive(Clone)]
+pub struct UnificationError( Vec<MatchCandidate> );
+
+#[derive(Clone)]
+pub enum CommandTypeExpr {
+    Type(TypeTerm),
+    Match(Box<CommandTypeExpr>, Vec<(CommandArgPattern, CommandTypeExpr)>)
 }
 
 impl CommandArgPattern {
@@ -35,27 +47,29 @@ impl CommandArgPattern {
     }
 }
 
-pub struct MatchCandidate {
-    at: usize,
-    expected: CommandPattern,
-    found: CommandTypeExpr,
-}
-
-pub struct UnificationError( Vec<MatchCandidate> );
-
-
-
-pub enum CommandTypeExpr {
-    Parameter(String),
-    ParameterPack(String),
-    Char(char),
-    Match(Box<CommandTypeExpr>, Vec<(CommandArgPattern, CommandTypeExpr)>)
-}
-
 impl CommandTypeExpr {
-    pub fn eval(self) -> CommandTypeExpr {
+    pub fn eval(self) -> Result<TypeTerm, CommandTypeExpr> {
         match self {
-            s=>s
+            CommandTypeExpr::Type(typ) => Ok(typ),
+            CommandTypeExpr::Match(pattern, cases) => {
+                
+            }
+            s=> Ok(s)
+        }
+    }
+
+    pub fn apply_subst(&mut self, subst: &Substitution) {
+        match self {
+            CommandTypeExpr::Type(typ) => {
+                self = CommandTypeExpr::Type(
+                    typ.apply_substitution(|v: String| subst.get(v))
+                );
+            }
+            CommandTypeExpr::Match( pattern, cases ) => {
+                
+                // todo
+            }
+            _ => {}
         }
     }
 }

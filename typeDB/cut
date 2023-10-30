@@ -2,17 +2,17 @@
 
     match OPTION... {
         --help { <1 : Help~<Seq Char> ; }
-	--version { <1 : VersionInfo~<Seq Char> ; }
+        --version { <1 : VersionInfo~<Seq Char> ; }
 
         * {
-	    match OPTION... {
-		-f--fields LIST:<Seq ℕ>~CutFieldList~<Seq Char> {
+            match OPTION... {
+                -f--fields LIST:<Seq ℕ>~CutFieldList~<Seq Char> {
 
                     ROW-DELIM =
                         match OPTION... {
                             -z--zero-terminated { '\0' }
                             * { '\n' }
-			};
+                        };
 
                     IN-COL-DELIM =
                         match OPTION... {
@@ -22,9 +22,9 @@
 
                     OUT-COL-DELIM =
                         match OPTION... {
-			    --output-delimiter STRING:<Seq Char> { STRING }
-			    * { IN-COL-DELIM }
-			};
+                            --output-delimiter STRING:<Seq Char> { STRING }
+                            * { IN-COL-DELIM }
+                        };
 
                     FILE : Path
                            ~<Seq PathSegment
