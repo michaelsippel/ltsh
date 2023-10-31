@@ -85,18 +85,9 @@ where It: 'a + Iterator<Item = char> {
     }
 }
 
-
 pub struct WordLexer<'a, It>
 where It: 'a + Iterator<Item = char> {
     chars: &'a mut Peekable<It>
-}
-
-impl<'a, It> WordLexer<'a, It>
-where It: Iterator<Item = char> {
-    fn collect_until(&mut self, close: Option<char>) -> Result<String, LexError> {
-        DelimIter::new(&mut self.chars, vec![(close, true)])
-            .try_collect::<String>()
-    }
 }
 
 pub struct SubstLexer<'a, It>
@@ -140,8 +131,6 @@ where It: Iterator<Item = char>
             let word = Word {
                 segments: SubstLexer { chars: &mut s.chars().peekable() }
                 .try_collect::<Vec<_>>()?
-//                .scan((), |_, x| x.ok())
-//                    .collect::<Vec<_>>()
             };
 
             Ok(WordSegment::DoubleQuote(word))
@@ -362,6 +351,7 @@ where It: 'a + Iterator<Item = char> {
                     // Subshell
                     Some('(') => {
                         self.chars.next();
+
                         let subcmd_str = DelimIter::new(&mut self.chars, vec![(Some(')'), true)]).try_collect::<String>();
                         match subcmd_str {
                             Ok(subcmd_str) => {
