@@ -38,7 +38,7 @@ fn main() {
     let stdin = std::io::stdin();
     for line in std::io::BufReader::new(stdin).lines() {
         if let Ok(line) = line {
-            let cmd = sh::parse::parse_cmd( &mut line.chars().peekable() );
+            let cmd = sh::parse::parse_cmd( &mut line.chars().peekable(), 0 );
             eprintln!("parsed cmd: {:?}", cmd);
             /*
             let mut lex = parse::WordLexer::from( line.chars() );

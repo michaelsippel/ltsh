@@ -30,7 +30,8 @@ where It: Iterator<Item = char> {
             (None, true),
             (Some(' '), true),
             (Some('\t'), true),
-            (Some('\n'), true)
+            (Some('\n'), true),
+            (Some(')'), false),
         ])
     }
 
@@ -43,6 +44,8 @@ where It: Iterator<Item = char> {
             (Some('|'), false),
             (Some('&'), false),
             (Some(';'), false),
+            (Some(')'), false),
+            (Some('$'), false),
             (Some('\"'), false),
             (Some('\''), false)
         ])
@@ -57,7 +60,8 @@ where It: Iterator<Item = char> {
             (Some('='), false),
             (Some('|'), false),
             (Some('&'), false),
-            (Some(';'), false),
+            (Some(';'), false),            
+            (Some(')'), false),
             (Some('\"'), false),
             (Some('\''), false)
         ])
@@ -92,7 +96,8 @@ where It: 'a + Iterator<Item = char> {
 
 pub struct SubstLexer<'a, It>
 where It: 'a + Iterator<Item = char> {
-    chars: &'a mut Peekable<It>
+    chars: &'a mut Peekable<It>,
+    depth: usize
 }
 
 pub fn skip_whitespace<It>(chars: &mut Peekable<It>)
@@ -124,12 +129,14 @@ pub fn parse_doublequoted<It>(chars: &mut Peekable<It>) -> Result<WordSegment, L
 where It: Iterator<Item = char>
 {
     assert_eq!( chars.next(), Some('\"'));
+
+    // todo: allow escaped \"
     let quoted = DelimIter::new(chars, vec![(Some('\"'), true)]).try_collect::<String>();
 
     match quoted {
         Ok(s) => {
             let word = Word {
-                segments: SubstLexer { chars: &mut s.chars().peekable() }
+                segments: SubstLexer { chars: &mut s.chars().peekable(), depth: 1 }
                 .try_collect::<Vec<_>>()?
             };
 
@@ -213,14 +220,14 @@ where It: Iterator<Item = char>
     }
 }
 
-pub fn parse_cmd<It>(chars: &mut Peekable<It>) -> Result<Option<Command>, LexError>
+pub fn parse_cmd<It>(chars: &mut Peekable<It>, depth: usize) -> Result<Option<Command>, LexError>
 where It: Iterator<Item = char>
 {
     skip_whitespace(chars);
     match chars.peek() {
         Some('!') => {
             chars.next();
-            if let Some(cmd) = parse_cmd(chars)? {
+            if let Some(cmd) = parse_cmd(chars, depth)? {
                 Ok(Some(Command::Negation(Box::new(cmd))))
             } else {
                 Err(LexError::UnexpectedEnd(vec![]))
@@ -234,18 +241,14 @@ where It: Iterator<Item = char>
                     Some(';') => {
                         chars.next();
 
-                        let tail = parse_cmd( chars ) ?;
+                        let tail = parse_cmd( chars, depth ) ?;
                         match tail {
                             Some(Command::Sequence(mut s)) => {
                                 s.insert(0, head);
                                 Ok(Some(Command::Sequence(s)))
                             }
-                            Some(tail) => {
-                                Ok(Some(Command::Sequence(vec![ head, tail ])))
-                            }
-                            None => {
-                                Ok(Some(head))
-                            }
+                            Some(tail) => Ok(Some(Command::Sequence(vec![ head, tail ]))),
+                            None => Ok(Some(head))
                         }
                     }
                     Some('|') => {
@@ -254,33 +257,25 @@ where It: Iterator<Item = char>
                             Some('|') => {
                                 chars.next();
 
-                                let tail = parse_cmd( chars ) ?;
+                                let tail = parse_cmd( chars, depth ) ?;
                                 match tail {
                                     Some(Command::ShortCircuitDisjunction(mut s)) => {
                                         s.insert(0, head);
                                         Ok(Some(Command::ShortCircuitDisjunction(s)))
                                     }
-                                    Some(tail) => {
-                                        Ok(Some(Command::ShortCircuitDisjunction(vec![ head, tail ])))
-                                    }
-                                    None => {
-                                        Err(LexError::UnexpectedEnd(vec![Some('|')]))
-                                    }
+                                    Some(tail) => Ok(Some(Command::ShortCircuitDisjunction(vec![ head, tail ]))),
+                                    None => Err(LexError::UnexpectedEnd(vec![Some('|')]))
                                 }
                             }
                             _ => {
-                                let tail = parse_cmd( chars ) ?;
+                                let tail = parse_cmd( chars, depth ) ?;
                                 match tail {
                                     Some(Command::Pipeline(mut s)) => {
                                         s.insert(0, head);
                                         Ok(Some(Command::Pipeline(s)))
                                     }
-                                    Some(tail) => {
-                                        Ok(Some(Command::Pipeline(vec![ head, tail ])))
-                                    }
-                                    None => {
-                                        Err(LexError::UnexpectedEnd(vec![]))
-                                    }
+                                    Some(tail) => Ok(Some(Command::Pipeline(vec![ head, tail ]))),
+                                    None => Err(LexError::UnexpectedEnd(vec![]))
                                 }
                             }
                         }
@@ -291,23 +286,17 @@ where It: Iterator<Item = char>
                             Some('&') => {
                                 chars.next();
 
-                                let tail = parse_cmd( chars ) ?;
+                                let tail = parse_cmd( chars, depth ) ?;
                                 match tail {
                                     Some(Command::ShortCircuitConjunction(mut s)) => {
                                         s.insert(0, head);
                                         Ok(Some(Command::ShortCircuitConjunction(s)))
                                     }
-                                    Some(tail) => {
-                                        Ok(Some(Command::ShortCircuitConjunction(vec![ head, tail ])))
-                                    }
-                                    None => {
-                                        Err(LexError::UnexpectedEnd(vec![Some('&'), Some('&')]))
-                                    }
+                                    Some(tail) => Ok(Some(Command::ShortCircuitConjunction(vec![ head, tail ]))),
+                                    None => Err(LexError::UnexpectedEnd(vec![Some('&'), Some('&')]))
                                 }
                             }
-                            Some(c) => {
-                                Err(LexError::UnexpectedToken(*c))
-                            }
+                            Some(c) => Err(LexError::UnexpectedToken(*c)),
                             None => {
                                 // todo:
                                 // background job
@@ -315,12 +304,17 @@ where It: Iterator<Item = char>
                             }
                         }
                     }
-                    Some(c) => {
-                        Err(LexError::UnexpectedToken(*c))
+                    Some(')') => {
+                        eprintln!("got )");
+                        chars.next();
+                        if depth > 0 {
+                            Ok(Some(head))
+                        } else {
+                            Err(LexError::UnexpectedToken(')'))
+                        }
                     }
-                    None => {
-                        Ok(Some(head))
-                    }
+                    Some(c) => Err(LexError::UnexpectedToken(*c)),
+                    None => Ok(Some(head))
                 }
             } else {
                 Ok(None)
@@ -351,20 +345,23 @@ where It: 'a + Iterator<Item = char> {
                     // Subshell
                     Some('(') => {
                         self.chars.next();
-
+/*
                         let subcmd_str = DelimIter::new(&mut self.chars, vec![(Some(')'), true)]).try_collect::<String>();
                         match subcmd_str {
                             Ok(subcmd_str) => {
-                                match parse_cmd(&mut subcmd_str.chars().peekable()) {
+                                */
+                                match parse_cmd(&mut self.chars, 1) {
                                     Ok(Some(subcmd)) => {
                                         Some(Ok(WordSegment::Subshell(subcmd)))        
                                     }
                                     Ok(None) => None,
                                     Err(err) => Some(Err(err))
                                 }
+                        /*
                             }
                             Err(err) => Some(Err(err))
                         }
+                */
                     }
 
                     // plain parameter name e.g. `$PARAM`
@@ -426,8 +423,9 @@ where It: 'a + Iterator<Item = char> {
             Some('"') => { Some(parse_doublequoted(self.chars)) },
             Some('\'') => { Some(parse_quoted(self.chars)) },
             Some('$') => {
-                SubstLexer{ chars: &mut self.chars }.next()
+                SubstLexer{ chars: &mut self.chars, depth: 1 }.next()
             }
+            Some(')') => { None }
             Some(c) => {
                 let s : Result<String, LexError> = DelimIter::new_shell_word(self.chars).collect();
                 match s {
